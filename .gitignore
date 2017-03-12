@@ -1,0 +1,26 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+bin/
+lib/
+lib64/
+
+# Installer logs
+pip-selfcheck.json
+
+# Unit test / coverage reports
+.cache
+
+# pyenv
+.python-version
+
+# virtualenv
+.venv
+venv/
+ENV/
