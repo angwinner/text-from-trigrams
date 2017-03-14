@@ -1,9 +1,9 @@
 TEST_PATH = '/home/awinner/Code/day3/trigrams/tests'
 SHERLOCK_SMALLER_DICT = {' ': ('One',),
                          ' One': ('night',),
-                         'One night': ('--',),
-                         'night --': ('it',),
-                         '-- it': ('was',),
+                         'One night': (u'\u2014',),
+                         'night ' + u'\u2014': ('it',),
+                         u'\u2014' + ' it': ('was',),
                          'it was': ('on',),
                          'was on': ('the',),
                          'on the': ('twentieth',),
@@ -11,9 +11,9 @@ SHERLOCK_SMALLER_DICT = {' ': ('One',),
                          'twentieth of': ('March',),
                          'of March': (',',),
                          'March ,': ('1888',),
-                         ', 1888': ('--',),
-                         '1888 --': ('I',),
-                         '-- I': ('was',),
+                         ', 1888': (u'\u2014',),
+                         '1888 ' + u'\u2014': ('I',),
+                         u'\u2014' + ' I': ('was',),
                          'I was': ('returning',),
                          'was returning': ('from',),
                          'returning from': ('a',),
@@ -30,9 +30,8 @@ SHERLOCK_SMALLER_DICT = {' ': ('One',),
                          'now returned': ('to',),
                          'returned to': ('civil',),
                          'to civil': ('practice',),
-                         'civil practice': (')',),
-                         'practice )': (',',),
-                         ') ,': ('when',),
+                         'civil practice': (',',),
+                         'practice ,': ('when',),
                          ', when': ('my',),
                          'when my': ('way',),
                          'my way': ('led',),
@@ -97,6 +96,75 @@ def test_open_source():
     assert parse_source(source_path) == {"not real": ("data")}
 
 
+def test_parse_word_alnum():
+    from trigrams import parse_word
+    assert parse_word('cat') == ['cat']
+
+
+def test_parse_word_solo():
+    from trigrams import parse_word
+    assert parse_word('&') == ['&']
+
+
+def test_parse_word_solo_hyphen():
+    from trigrams import parse_word
+    assert parse_word('-') == [u'\u2014']
+
+
+def test_parse_word_end_hyphen():
+    from trigrams import parse_word
+    assert parse_word('half-') == ['half-']
+
+
+def test_parse_word_full_enclosed():
+    from trigrams import parse_word
+    assert parse_word('(only)') == ['(only)']
+    assert parse_word('"scare"') == ['"scare"']
+
+
+def test_parse_word_front_enclosed():
+    from trigrams import parse_word
+    assert parse_word('(Only') == ['(', 'Only']
+    assert parse_word('"Only') == ['"', 'Only']
+
+
+def test_parse_word_end_enclosed():
+    from trigrams import parse_word
+    assert parse_word('said]') == ['said']
+    assert parse_word('said"') == ['said']
+
+
+def test_parse_word_end_punc():
+    from trigrams import parse_word
+    assert parse_word('said.') == ['said', '.']
+    assert parse_word('said...') == ['said', '...']
+
+
+def test_parse_word_multi_end_punc():
+    from trigrams import parse_word
+    assert parse_word('said!"') == ['said', '!']
+    assert parse_word('said!!!') == ['said', '!', '!', '!']
+    assert parse_word('said!")') == ['said', '!']
+
+
+def test_parse_word_multi_front_punc():
+    from trigrams import parse_word
+    assert parse_word('("Every') == ['(', '"', 'Every']
+
+
+def test_parse_word_ellipsis():
+    from trigrams import parse_word
+    assert parse_word('...') == ['...']
+    assert parse_word('continued...') == ['continued', '...']
+    assert parse_word('ah...choo') == ['ah...choo']
+
+
+def test_parse_word_em_dash():
+    from trigrams import parse_word
+    assert parse_word('should--but') == ['should', u'\u2014', 'but']
+    assert parse_word('--') == [u'\u2014']
+
+
 def test_parse_line():
     from trigrams import parse_line
     # byte_line = b'__test__\n'
@@ -146,13 +214,12 @@ def test_quotes_begin_end():
                    '" "': ('Surely',),
                    '" Surely': ('you',),
                    'Surely you': ('jest',),
-                   'you jest': ('!',),
-                   'jest !': ('"',)
+                   'you jest': ('!',)
                    }
 
     (trigram_dict, last_two) = parse_line(source_line, trigram_dict, last_two)
     assert trigram_dict == result_dict
-    assert last_two == ('!', '"')
+    assert last_two == ('jest', '!')
 
 
 def test_internal_apostrophe():
@@ -196,12 +263,13 @@ def test_curse_string_end():
     last_two = ('who', 'was')
 
     result_dict = {'who was': ('that',),
-                   'was that': ("#(%(*#!@?",)
+                   'was that': ("#(%(*#!@",),
+                   'that #(%(*#!@': ('?',),
                    }
 
     (trigram_dict, last_two) = parse_line(source_line, trigram_dict, last_two)
     assert trigram_dict == result_dict
-    assert last_two == ('that', '#(%(*#!@?')
+    assert last_two == ('#(%(*#!@', '?')
 
 
 def test_plural_possessive():
@@ -266,3 +334,4 @@ def test_get_next_key_missing():
     key = get_next_key(SHERLOCK_SMALLER_DICT, 'green', 'cheese')
     keys = SHERLOCK_SMALLER_DICT.keys()
     assert key in keys
+

@@ -3,6 +3,7 @@ import pathlib
 import io
 import random
 import sys
+import string
 
 USAGE = """
 Usage: trigrams sourcefile length
@@ -23,15 +24,101 @@ def add_trigram(trigram_dict, key, value):
     return trigram_dict
 
 
+def strip_punc(pre_p, word, post_p):
+
+    ending_punc = ['.', '?', '!', ':', ';', ',']
+    enclosing_punc = ['"', '(', ')', '[', ']']
+
+    done_flag = False
+
+    # Endquotes, end parens, end brackets are not placed via trigram.
+    # Words with paired enclosing punc are kept as-is, ie. dog(s), (S)he,
+    # (eventually), and "scary" scare quotes
+    if word[-1] == ')':
+        if '(' not in word:
+            word = word.rstrip(')')
+        else:
+            done_flag = True
+    if word[-1] == ']':
+        if '[' not in word:
+            word = word.rstrip(']')
+        else:
+            done_flag = True
+    if word[-1] == '"':
+        if word.startswith('"'):
+            done_flag = True
+        else:
+            word = word.rstrip('"')
+
+    if not done_flag:
+        if word[0] in enclosing_punc:
+            pre_p.append(word[0])
+            word = word[1: len(word)]
+
+    if word.endswith('...'):
+        post_p.insert(0, '...')
+        word = word[0: len(word) - 3]
+
+    if word[-1] in ending_punc:
+        post_p.insert(0, word[-1])
+        word = word[0: -1]
+
+    if not done_flag and len(word) > 0:
+        if (word[-1] in enclosing_punc or
+            word[-1] in ending_punc or
+            word[0] in enclosing_punc):
+
+            (pre_p, word, post_p) = strip_punc(pre_p, word, post_p)
+
+    return (pre_p, word, post_p)
+
+
 def parse_word(word):
-    
+    """ Words in this sense are just space-separated blocks of text.
+    Punctuation elements are either left in the word or returned as
+    independent words. """
+
+    if len(word) == 0:
+        return []
+
+    if '--' in word:
+        word = word.replace('--', u'\u2014')
+
+    if word == '-':  # only replace hyphens surrounded by spaces
+        word = u'\u2014'
+
+    if word.isalnum():
+        return [word]
+
+    solo_punc = ['&', u'\u2014', '...']
+    if word in solo_punc:
+        return [word]
+
+    pre_punc = []
+    post_punc = []
+
+    pre_punc, word, post_punc = strip_punc(pre_punc, word, post_punc)
+
+    result = [word]
+    # parse central punctuation like mother-in-law, his/hers, ah...choo!,
+    # Ben's or em dash [it was over--I knew] Only em dash is its own word
+    if u"\u2014" in word:
+        emdashed = word.split(u"\u2014")
+        word1parsed = parse_word(emdashed[0])
+        word2parsed = parse_word(emdashed[1])
+        result = word1parsed + [u'\u2014'] + word2parsed
+
+    return pre_punc + result + post_punc
+
+
+def parse_word_old(word):
     punc_words = []
     if word.isalnum():
         punc_words.append(word)
     else:
         if '--' in word:
             mdash_words = word.split('--')
-            if len(mdash_words) = 3: # if not, do nothing, use as-is
+            if len(mdash_words) == 3:  # if not, do nothing, use as-is
                 punc_words = parse_word(mdash_words[0])
                 punc_words.append('--')
                 word = mdash_words[1]
@@ -181,10 +268,9 @@ def story_from_source(source_path, out_length):
 
 
 def main():
-    if __name__ == '__main__':
-        if len(sys.argv) != 2:
-            print(USAGE)
-            sys.exit(1)
+    if len(sys.argv) != 3:
+        print(USAGE)
+        sys.exit(1)
 
-        story_from_source(sys.argv[0], int(sys.argv[1]))
-        sys.exit(0)
+    story_from_source(sys.argv[1], int(sys.argv[2]))
+    sys.exit(0)

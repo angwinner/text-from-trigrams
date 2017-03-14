@@ -10,6 +10,7 @@ __pycache__/
 bin/
 lib/
 lib64/
+lib64
 
 # Installer logs
 pip-selfcheck.json
