@@ -87,9 +87,6 @@ def parse_word(word):
     if word == '-':  # only replace hyphens surrounded by spaces
         word = u'\u2014'
 
-    if word.isalnum():
-        return [word]
-
     solo_punc = ['&', u'\u2014', '...']
     if word in solo_punc:
         return [word]
@@ -97,7 +94,14 @@ def parse_word(word):
     pre_punc = []
     post_punc = []
 
-    pre_punc, word, post_punc = strip_punc(pre_punc, word, post_punc)
+    if not word.isalnum():
+        pre_punc, word, post_punc = strip_punc(pre_punc, word, post_punc)
+
+    # dict entries will be recapitalized via proper name recognition
+    # or start sentence rules as required
+    firstletter = word[0]
+    if firstletter.isupper():
+        word = firstletter.lower() + word[1:len(word)]
 
     result = [word]
     # parse central punctuation like mother-in-law, his/hers, ah...choo!,
@@ -127,7 +131,6 @@ def parse_line(line, trigram_dict, last_two):
         if line[-1] not in '".?!':
             return (trigram_dict, ('', ''))
 
-    # punctuation marks will count as individual 'words'
     spaced_words = line.split(' ')
     all_words = [last_two[0], last_two[1]]
     for word in spaced_words:

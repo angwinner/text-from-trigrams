@@ -1,20 +1,20 @@
 TEST_PATH = '/home/awinner/Code/day3/trigrams/tests'
-SHERLOCK_SMALLER_DICT = {' ': ('One',),
-                         ' One': ('night',),
-                         'One night': (u'\u2014',),
+SHERLOCK_SMALLER_DICT = {' ': ('one',),
+                         ' one': ('night',),
+                         'one night': (u'\u2014',),
                          'night ' + u'\u2014': ('it',),
                          u'\u2014' + ' it': ('was',),
                          'it was': ('on',),
                          'was on': ('the',),
                          'on the': ('twentieth',),
                          'the twentieth': ('of',),
-                         'twentieth of': ('March',),
-                         'of March': (',',),
-                         'March ,': ('1888',),
+                         'twentieth of': ('march',),
+                         'of march': (',',),
+                         'march ,': ('1888',),
                          ', 1888': (u'\u2014',),
-                         '1888 ' + u'\u2014': ('I',),
-                         u'\u2014' + ' I': ('was',),
-                         'I was': ('returning',),
+                         '1888 ' + u'\u2014': ('i',),
+                         u'\u2014' + ' i': ('was',),
+                         'i was': ('returning',),
                          'was returning': ('from',),
                          'returning from': ('a',),
                          'from a': ('journey',),
@@ -23,9 +23,9 @@ SHERLOCK_SMALLER_DICT = {' ': ('One',),
                          'to a': ('patient',),
                          'a patient': ('(',),
                          'patient (': ('for',),
-                         '( for': ('I',),
-                         'for I': ('had',),
-                         'I had': ('now',),
+                         '( for': ('i',),
+                         'for i': ('had',),
+                         'i had': ('now',),
                          'had now': ('returned',),
                          'now returned': ('to',),
                          'returned to': ('civil',),
@@ -37,28 +37,28 @@ SHERLOCK_SMALLER_DICT = {' ': ('One',),
                          'my way': ('led',),
                          'way led': ('me',),
                          'led me': ('through',),
-                         'me through': ('Baker',),
-                         'through Baker': ('Street',),
-                         'Baker Street': ('.',)
+                         'me through': ('baker',),
+                         'through baker': ('street',),
+                         'baker street': ('.',)
                          }
 
 
-TWINKLE_DICT = {' ': ('Twinkle',),
-                ' Twinkle': (',',),
-                'Twinkle ,': ('twinkle', 'twinkle'),
+TWINKLE_DICT = {' ': ('twinkle',),
+                ' twinkle': (',',),
+                'twinkle ,': ('twinkle', 'twinkle'),
                 ', twinkle': ('little', 'little'),
                 'twinkle little': ('star', 'fish'),
                 'little star': ('.',),
-                'star .': ('How',),
-                '. How': ('I', 'I'),
-                'How I': ('wonder', 'wonder'),
-                'I wonder': ('what', 'what'),
+                'star .': ('how',),
+                '. how': ('i', 'i'),
+                'how i': ('wonder', 'wonder'),
+                'i wonder': ('what', 'what'),
                 'wonder what': ('you', 'you'),
                 'what you': ('are', 'wish'),
                 'you are': ('.',),
-                'are .': ('Up',),
-                '. Up': ('above',),
-                'Up above': ('the',),
+                'are .': ('up',),
+                '. up': ('above',),
+                'up above': ('the',),
                 'above the': ('world',),
                 'the world': ('so',),
                 'world so': ('high',),
@@ -70,10 +70,10 @@ TWINKLE_DICT = {' ': ('Twinkle',),
                 'diamond in': ('the',),
                 'in the': ('sky',),
                 'the sky': ('.',),
-                'sky .': ('Twinkle',),
-                '. Twinkle': (',',),
+                'sky .': ('twinkle',),
+                '. twinkle': (',',),
                 'little fish': ('.',),
-                'fish .': ('How',),
+                'fish .': ('how',),
                 'you wish': ('.',)
                 }
 
@@ -127,8 +127,8 @@ def test_parse_word_full_enclosed():
 
 def test_parse_word_front_enclosed():
     from trigrams import parse_word
-    assert parse_word('(Only') == ['(', 'Only']
-    assert parse_word('"Only') == ['"', 'Only']
+    assert parse_word('(Only') == ['(', 'only']
+    assert parse_word('"Only') == ['"', 'only']
 
 
 def test_parse_word_end_enclosed():
@@ -152,7 +152,7 @@ def test_parse_word_multi_end_punc():
 
 def test_parse_word_multi_front_punc():
     from trigrams import parse_word
-    assert parse_word('("Every') == ['(', '"', 'Every']
+    assert parse_word('("Every') == ['(', '"', 'every']
 
 
 def test_parse_word_ellipsis():
@@ -214,9 +214,9 @@ def test_quotes_begin_end():
     last_two = ('.', '"')
 
     result_dict = {'. "': ('"',),
-                   '" "': ('Surely',),
-                   '" Surely': ('you',),
-                   'Surely you': ('jest',),
+                   '" "': ('surely',),
+                   '" surely': ('you',),
+                   'surely you': ('jest',),
                    'you jest': ('!',)
                    }
 
@@ -231,9 +231,9 @@ def test_internal_apostrophe():
     trigram_dict = {}
     last_two = ('die', '!')
 
-    result_dict = {'die !': ('Surely',),
-                   '! Surely': ("you're",),
-                   "Surely you're": ('joking',),
+    result_dict = {'die !': ('surely',),
+                   '! surely': ("you're",),
+                   "surely you're": ('joking',),
                    "you're joking": ('!',)
                    }
 
@@ -281,9 +281,9 @@ def test_plural_possessive():
     trigram_dict = {}
     last_two = ('pets', '.')
 
-    result_dict = {'pets .': ('The',),
-                   '. The': ("dogs'",),
-                   "The dogs'": ('kennel',),
+    result_dict = {'pets .': ('the',),
+                   '. the': ("dogs'",),
+                   "the dogs'": ('kennel',),
                    "dogs' kennel": ('stinks',),
                    'kennel stinks': ('.',)
                    }
