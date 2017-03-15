@@ -77,6 +77,15 @@ TWINKLE_DICT = {' ': ('twinkle',),
                 'you wish': ('.',)
                 }
 
+TOO_MUCH_PUNCTUATION_DICT = {'green eggs': ('.',),
+                             'and ham': ('.',),
+                             'Sam i': ('.',),
+                             'will not': ('.',),
+                             'eat it': ('.',),
+                             'in a': ('.',),
+                             'boat .': ('i',)
+                             }
+
 SHERLOCK_SMALL_NAMES = ['March', 'I', 'Baker', 'Street', 'Study', 'Scarlet',
                         'Holmes']
 
@@ -368,14 +377,21 @@ def test_get_last_part_key():
     assert last_part == 'squash'
 
 
-def test_get_next_key_there():
-    from trigrams import get_next_key
-    key = get_next_key(SHERLOCK_SMALLER_DICT, 'a', 'journey')
+def test_get_key_exists():
+    from trigrams import get_key
+    key, was_rand = get_key(SHERLOCK_SMALLER_DICT, 'a', 'journey')
     assert key == 'a journey'
+    assert not was_rand
 
 
-def test_get_next_key_missing():
-    from trigrams import get_next_key
-    key = get_next_key(SHERLOCK_SMALLER_DICT, 'green', 'cheese')
+def test_get_key_missing():
+    from trigrams import get_key
+    key, was_rand = get_key(SHERLOCK_SMALLER_DICT, 'green', 'cheese')
     keys = SHERLOCK_SMALLER_DICT.keys()
     assert key in keys
+    assert was_rand
+
+def test_punc_after_punc():
+    from trigrams import get_next_word
+    word1, word2 = get_next_word(TOO_MUCH_PUNCTUATION_DICT, 'not', '!')
+    assert word2 == 'i'

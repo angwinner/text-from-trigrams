@@ -302,32 +302,39 @@ def get_last_part_key(key):
     return two_words[1]
 
 
-def get_next_key(trigram_dict, word1, word2):
+def get_key(trigram_dict, word1, word2):
     key = word1 + ' ' + word2
     if key in trigram_dict:
-        return key
+        return key, False
     else:
-        # make sure you don't return punc after punc
-        # use str.ispunctuation()
-        return get_rand_key(trigram_dict)
+        return get_rand_key(trigram_dict), True
+
+
+def get_next_word(trigram_dict, word1, word2):
+    key, was_rand = get_key(trigram_dict, word1, word2)
+
+    choices = tuple(trigram_dict[key])
+    if len(choices) == 1:
+        next_word = str(choices[0])
+    else:
+        choice_index = random.randrange(len(choices))
+        next_word = str(choices[choice_index])
+
+    while not word2.isalpha() and was_rand and not next_word.isalpha():
+        ignore, next_word = get_next_word(trigram_dict, word1, word2)
+
+    return word2, next_word
 
 
 def write_story(trigram_dict, out_length):
-    key = get_rand_key(trigram_dict)
-    previous_word = get_last_part_key(key)
-    next_word = ''
+    word1 = ''
+    word2 = ''
 
     for i in range(out_length):
-        choices = tuple(trigram_dict[key])
-        if len(choices) == 1:
-            next_word = choices[0]
-        else:
-            choice_index = random.randrange(len(choices))
-            next_word = choices[choice_index]
-        # impose capitalization, enclosing punc
-        # and appropriate spacing for punc
+        prev_word, next_word = get_next_word(trigram_dict, word1, word2)
         print(next_word, end=' ')
-        key = get_next_key(trigram_dict, previous_word, next_word)
+        word1 = prev_word
+        word2 = next_word
 
 
 def story_from_source(source_path, out_length):
