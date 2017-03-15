@@ -3,7 +3,6 @@ import pathlib
 import io
 import random
 import sys
-import string
 
 USAGE = """
 Usage: trigrams sourcefile length
@@ -12,6 +11,10 @@ Usage: trigrams sourcefile length
     the desired output
 
 """
+
+ENDING_PUNC = ['.', '?', '!', ':', ';', ',']  # ellipsis exluded
+SENTENCE_END = ['.', '?', '!']
+ENCLOSING_PUNC = ['"', '(', ')', '[', ']']
 
 
 def add_trigram(trigram_dict, key, value):
@@ -25,9 +28,6 @@ def add_trigram(trigram_dict, key, value):
 
 
 def strip_punc(pre_p, word, post_p):
-
-    ending_punc = ['.', '?', '!', ':', ';', ',']
-    enclosing_punc = ['"', '(', ')', '[', ']']
 
     done_flag = False
 
@@ -51,7 +51,7 @@ def strip_punc(pre_p, word, post_p):
             word = word.rstrip('"')
 
     if not done_flag:
-        if word[0] in enclosing_punc:
+        if word[0] in ENCLOSING_PUNC:
             pre_p.append(word[0])
             word = word[1: len(word)]
 
@@ -59,14 +59,14 @@ def strip_punc(pre_p, word, post_p):
         post_p.insert(0, '...')
         word = word[0: len(word) - 3]
 
-    if word[-1] in ending_punc:
+    if word[-1] in ENDING_PUNC:
         post_p.insert(0, word[-1])
         word = word[0: -1]
 
     if not done_flag and len(word) > 0:
-        if (word[-1] in enclosing_punc or
-            word[-1] in ending_punc or
-            word[0] in enclosing_punc):
+        if (word[-1] in ENCLOSING_PUNC or
+            word[-1] in ENDING_PUNC or
+            word[0] in ENCLOSING_PUNC):
 
             (pre_p, word, post_p) = strip_punc(pre_p, word, post_p)
 
@@ -109,50 +109,6 @@ def parse_word(word):
         result = word1parsed + [u'\u2014'] + word2parsed
 
     return pre_punc + result + post_punc
-
-
-def parse_word_old(word):
-    punc_words = []
-    if word.isalnum():
-        punc_words.append(word)
-    else:
-        if '--' in word:
-            mdash_words = word.split('--')
-            if len(mdash_words) == 3:  # if not, do nothing, use as-is
-                punc_words = parse_word(mdash_words[0])
-                punc_words.append('--')
-                word = mdash_words[1]
-
-        # this isn't spanish, assume the only prefixes are " (
-        if word.startswith('"'):
-            punc_words.append('"')
-            word = word.lstrip('"')
-        if word.startswith('('):
-            punc_words.append('(')
-            word = word.lstrip('(')
-        end_punc_reversed = []
-        if word.endswith('"'):
-            end_punc_reversed.append('"')
-            word = word.rstrip('"')
-        if len(word) > 0:
-            if word[0].isalnum():
-                if not word.endswith("'"):  # i.e. this is my dogs'
-                    #  trim off all punctuation on right as new words
-                    length = len(word)
-                    for i in range(length):
-                        if not word[-1].isalnum():
-                            end_punc_reversed.append(word[-1])
-                            word = word.rstrip(word[-1])
-                    punc_words.append(word)
-                else:  # this is my dogs'
-                    punc_words.append(word)
-            else:  # maybe this is #^%&*%!
-                punc_words.append(word)
-
-        end_punc_reversed.reverse()
-        punc_words = punc_words + end_punc_reversed
-
-    return punc_words
 
 
 def parse_line(line, trigram_dict, last_two):
@@ -208,6 +164,106 @@ def build_dict(f):
     return trigram_dict
 
 
+def build_lists(f):
+    proper_names = []
+    quotes = []  # s1, w22 - how many words/sentences each quote spanned
+    parens = []
+    brackets = []
+
+    in_sentc = False
+    proper = ''
+    accumulating_proper = False
+    in_quote = False
+    q_word_count = 0
+    q_sentc_count = 0
+    in_parens = False  # doesn't deal with nested parens or brackets
+    p_word_count = 0
+    p_sentc_count = 0
+    in_brackets = False
+    b_word_count = 0
+    b_sentc_count = 0
+
+    for line in f:
+
+        if len(line) > 0:
+            for i in range(0, len(line)):
+                char = line[i]
+                if char.isupper():
+                    if not in_sentc:
+                        in_sentc = True
+                    else:
+                        proper += char
+                        accumulating_proper = True
+                elif char.isspace() or char == '\n':
+                    if accumulating_proper:
+                        stripped = strip_punc([], proper, [])
+                        proper = stripped[1]
+                        if proper not in proper_names:
+                            proper_names.append(proper)
+                        accumulating_proper = False
+                        proper = ''
+                    if in_quote:
+                        q_word_count += 1
+                    if in_parens:
+                        p_word_count += 1
+                    if in_brackets:
+                        b_word_count += 1
+                elif char in SENTENCE_END:
+                    in_sentc = False
+                    if in_quote:
+                        q_sentc_count += 1
+                    if in_parens:
+                        p_sentc_count += 1
+                    if in_brackets:
+                        b_sentc_count += 1
+                elif char == '"':
+                    if in_quote:
+                        in_quote = False
+                        if q_word_count > 0:  # if not, in trigrams with quotes
+                            # save to quote list
+                            if q_sentc_count > 0:
+                                quotes.append(('s' + str(q_sentc_count)))
+                            else:
+                                quotes.append(('w' + str(q_word_count + 1)))
+                        q_word_count = 0
+                        q_sentc_count = 0
+                    else:
+                        in_quote = True
+                elif char == '(':
+                    in_parens = True
+                elif char == ')':
+                    in_parens = False
+                    if p_word_count > 0:
+                        if p_sentc_count > 0:
+                            parens.append(('s' + str(p_sentc_count)))
+                        else:
+                            parens.append(('w' + str(p_word_count + 1)))
+                    p_word_count = 0
+                    p_sentc_count = 0
+                elif char == '[':
+                    in_brackets = True
+                elif char == ']':
+                    in_brackets = False
+                    if b_word_count > 0:
+                        if b_sentc_count > 0:
+                            brackets.append(('s' + str(b_sentc_count)))
+                        else:
+                            brackets.append(('w' + str(b_word_count + 1)))
+                    b_word_count = 0
+                    b_sentc_count = 0
+                else:
+                    if accumulating_proper:
+                        proper += char
+
+        else:
+            # an empty line
+            in_sentc = False
+            proper = ''
+            accumulating_proper = False
+
+    return proper_names, quotes, parens, brackets
+
+
 def parse_source(source_path):
     """ Returns a dict of two-word keys linked to next word options"""
 
@@ -222,6 +278,11 @@ def parse_source(source_path):
 
     f = io.open(source_path, encoding='utf-8')
     trigram_dict = build_dict(f)
+    f.close()
+
+    # go through source again to gather info can span multiple lines
+    f = io.open(source_path, encoding='utf-8')
+    proper_names, quotes, parens, brackets = build_lists(f)
     f.close()
 
     return trigram_dict
@@ -243,6 +304,8 @@ def get_next_key(trigram_dict, word1, word2):
     if key in trigram_dict:
         return key
     else:
+        # make sure you don't return punc after punc
+        # use str.ispunctuation()
         return get_rand_key(trigram_dict)
 
 
@@ -258,6 +321,8 @@ def write_story(trigram_dict, out_length):
         else:
             choice_index = random.randrange(len(choices))
             next_word = choices[choice_index]
+        # impose capitalization, enclosing punc
+        # and appropriate spacing for punc
         print(next_word, end=' ')
         key = get_next_key(trigram_dict, previous_word, next_word)
 

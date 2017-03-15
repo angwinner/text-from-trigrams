@@ -77,6 +77,9 @@ TWINKLE_DICT = {' ': ('Twinkle',),
                 'you wish': ('.',)
                 }
 
+SHERLOCK_SMALL_NAMES = ['March', 'I', 'Baker', 'Street', 'Study', 'Scarlet',
+                        'Holmes']
+
 
 def test_parse_source_notpath():
     from trigrams import parse_source
@@ -310,6 +313,48 @@ def test_build_branches():
     assert parse_source(source_path) == TWINKLE_DICT
 
 
+def test_build_list_proper():
+    from trigrams import build_lists
+    import io
+    source_path = TEST_PATH + "/sherlock_small.txt"
+    f = io.open(source_path, encoding='utf-8')
+    proper_names, quotes, parens, brackets = build_lists(f)
+    f.close()
+    assert set(proper_names) == set(SHERLOCK_SMALL_NAMES)
+
+
+def test_build_list_parens():
+    from trigrams import build_lists
+    import io
+    source_path = TEST_PATH + "/sherlock_small.txt"
+    f = io.open(source_path, encoding='utf-8')
+    proper_names, quotes, parens, brackets = build_lists(f)
+    f.close()
+    assert set(parens) == set(['w8'])
+
+
+def test_build_list_quotes():
+    from trigrams import build_lists
+    import io
+    source_path = TEST_PATH + "/sherlock_alt_small.txt"
+    f = io.open(source_path, encoding='utf-8')
+    proper_names, quotes, parens, brackets = build_lists(f)
+    f.close()
+    assert set(quotes) == set(['s1', 's5', 'w3', 's4', 's1'])
+    # sets ignore duplicates, so also check
+    assert len(quotes) == 5
+
+
+def test_build_list_brackets():
+    from trigrams import build_lists
+    import io
+    source_path = TEST_PATH + "/sherlock_alt_small.txt"
+    f = io.open(source_path, encoding='utf-8')
+    proper_names, quotes, parens, brackets = build_lists(f)
+    f.close()
+    assert set(brackets) == set(['s1', 'w3'])
+
+
 def test_get_rand_key():
     from trigrams import get_rand_key
     key = get_rand_key(SHERLOCK_SMALLER_DICT)
@@ -334,4 +379,3 @@ def test_get_next_key_missing():
     key = get_next_key(SHERLOCK_SMALLER_DICT, 'green', 'cheese')
     keys = SHERLOCK_SMALLER_DICT.keys()
     assert key in keys
-
