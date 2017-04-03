@@ -286,20 +286,19 @@ def parse_source(source_path):
     # go through source again to gather info can span multiple lines
     f = io.open(source_path, encoding='utf-8')
     proper_names, quotes, parens, brackets = build_lists(f)
+    source_meta = {'proper_names': proper_names,
+                   'quotes': quotes,
+                   'parens': parens,
+                   'brackets': brackets}
     f.close()
 
-    return trigram_dict
+    return trigram_dict, source_meta
 
 
 def get_rand_key(trigram_dict):
     key_index = random.randrange(len(trigram_dict))
     key_list = list(trigram_dict.keys())
     return key_list[key_index]
-
-
-def get_last_part_key(key):
-    two_words = key.split(' ')
-    return two_words[1]
 
 
 def get_key(trigram_dict, word1, word2):
@@ -320,26 +319,205 @@ def get_next_word(trigram_dict, word1, word2):
         choice_index = random.randrange(len(choices))
         next_word = str(choices[choice_index])
 
+    # don't follow punctuation with punctuation
     while not word2.isalpha() and was_rand and not next_word.isalpha():
         ignore, next_word = get_next_word(trigram_dict, word1, word2)
 
     return word2, next_word
 
 
-def write_story(trigram_dict, out_length):
+def initialize_state():
+    # in_sentence, in_quote, in_parentheses, in_brackets
+    state = {'in_s': False, 'in_q': False, 'in_p': False, 'in_b': False,
+             'q_sentc_count': 0, 'q_word_count': 0, 'q_goal': '',
+             'p_sentc_count': 0, 'p_word_count': 0, 'p_goal': '',
+             'b_sentc_count': 0, 'b_word_count': 0, 'b_goal': ''}
+    return state
+
+
+def check_state_changes(old_state, state):
+    changes = []
+    if old_state['in_s'] and not state['in_s']:
+        changes.append('end sentc')
+    if not old_state['in_q'] and state['in_q']:
+        changes.append('start quote')
+    if not old_state['in_p'] and state['in_p']:
+        changes.append('start parens')
+    if not old_state['in_b'] and state['in_b']:
+        changes.append('start brackets')
+    return changes
+
+
+def update_state(old_state, state, formatted_word, source_meta):
+    also_print = ''
+    state_changes = check_state_changes(old_state, state)
+    for change in state_changes:
+        if change == 'end sentc':
+            if state['in_q']:
+                state['q_sentc_count'] += 1
+            if state['in_p']:
+                state['p_sentc_count'] += 1
+            if state['in_b']:
+                state['b_sentc_count'] += 1
+        if change == 'start quote':
+            state['q_goal'] = get_quote_length(source_meta)
+        if change == 'start parens':
+            state['p_goal'] = get_parens_length(source_meta)
+        if change == 'start brackets':
+            state['b_goal'] = get_brackets_length(source_meta)
+
+    if formatted_word.startswith(' '):  # these counts are space-delimited
+        if state['in_q']:
+            state['q_word_count'] += 1
+        if state['in_p']:
+            state['p_word_count'] += 1
+        if state['in_b']:
+            state['b_word_count'] += 1
+
+    # see if q, p, b counts equal goals
+    q_goal = state['q_goal']
+    if not q_goal == '':
+        if q_goal.startswith('s'):
+            if (int(state['q_sentc_count']) >= int(q_goal.lstrip('s'))):
+                also_print += '"'
+                state = reset_quote(state)
+        if q_goal.startswith('w'):
+            if int(state['q_word_count']) >= int(q_goal.lstrip('w')):
+                also_print += '"'
+                state = reset_quote(state)
+    p_goal = state['p_goal']
+    if not p_goal == '':
+        if p_goal.startswith('s'):
+            if (int(state['p_sentc_count']) >= int(p_goal.lstrip('s'))):
+                also_print += ')'
+                state = reset_parens(state)
+        if p_goal.startswith('w'):
+            if int(state['p_word_count']) >= int(p_goal.lstrip('w')):
+                also_print += ')'
+                state = reset_parens(state)
+    b_goal = state['b_goal']
+    if not b_goal == '':
+        if b_goal.startswith('s'):
+            if (int(state['b_sentc_count']) >= int(b_goal.lstrip('s'))):
+                also_print += ']'
+                state = reset_brackets(state)
+        if b_goal.startswith('w'):
+            if int(state['b_word_count']) >= int(b_goal.lstrip('w')):
+                also_print += ']'
+                state = reset_brackets(state)
+
+    return also_print, state
+
+
+def reset_quote(state):
+    state['q_goal'] = ''
+    state['in_q'] = False
+    state['q_word_count'] = 0
+    state['q_sentc_count'] = 0
+    return state
+
+
+def reset_parens(state):
+    state['p_goal'] = ''
+    state['in_p'] = False
+    state['p_word_count'] = 0
+    state['p_sentc_count'] = 0
+    return state
+
+
+def reset_brackets(state):
+    state['b_goal'] = ''
+    state['in_b'] = False
+    state['b_word_count'] = 0
+    state['b_sentc_count'] = 0
+    return state
+
+
+def get_quote_length(source_meta):
+    quotes = source_meta['quotes']
+    i = random.randrange(len(quotes))
+    return quotes[i]
+
+
+def get_parens_length(source_meta):
+    parens = source_meta['parens']
+    i = random.randrange(len(parens))
+    return parens[i]
+
+
+def get_brackets_length(source_meta):
+    brackets = source_meta['brackets']
+    i = random.randrange(len(brackets))
+    return brackets[i]
+
+
+def format_word(prev_word, next_word, state, source_meta):
+    # 'format' means add a space (or not) to the left of next_word
+    # and capitalize it as necessary
+    no_left_space = ['.', ',', ':', ';', '!', '?', '-']
+    nls_flag = False
+    if next_word in no_left_space:
+        nls_flag = True
+
+    if not state['in_s'] and next_word[0].isalpha():
+        state['in_s'] = True
+        if not next_word.isupper():  # don't de-capitalize all caps
+            next_word = next_word.capitalize()
+    if next_word in SENTENCE_END:
+        state['in_s'] = False
+
+    if not state['in_q'] and next_word == '"':
+        state['in_q'] = True
+    elif state['in_q'] and next_word == '"':
+        # we've hit a new quote before finishing our old one -- erase it
+        next_word = ''
+        nls_flag = True
+
+    if not state['in_p'] and next_word == '(':
+        state['in_p'] = True
+    if not state['in_b'] and next_word == '[':
+        state['in_b'] = True
+
+    # if next_word in #proper names
+    proper_names = source_meta['proper_names']
+    if next_word in proper_names:
+        if not next_word.isupper():  # don't de-capitalize all caps
+            next_word = next_word.capitalize()
+
+    if prev_word == u'\u2014':
+        nls_flag = True
+
+    if not nls_flag:
+        next_word = ' ' + next_word
+
+    return next_word, state
+
+
+def write_story(trigram_dict, source_meta, out_length):
     word1 = ''
     word2 = ''
 
+    state = initialize_state()
+
     for i in range(out_length):
         prev_word, next_word = get_next_word(trigram_dict, word1, word2)
-        print(next_word, end=' ')
+        old_state = state
+        formatted_word, state = format_word(prev_word, next_word,
+                                            state, source_meta)
+        print(formatted_word, end='')
         word1 = prev_word
         word2 = next_word
 
+        also_print, state = update_state(old_state, state, formatted_word,
+                                         source_meta)
+        print(also_print, end='')
+
+    print('\n')
+
 
 def story_from_source(source_path, out_length):
-    trigram_dict = parse_source(source_path)
-    write_story(trigram_dict, out_length)
+    trigram_dict, source_meta = parse_source(source_path)
+    write_story(trigram_dict, source_meta, out_length)
 
 
 def main():
@@ -349,3 +527,7 @@ def main():
 
     story_from_source(sys.argv[1], int(sys.argv[2]))
     sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
